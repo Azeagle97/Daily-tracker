@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1D9E75">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Daily Tracker">
+<title>Daily Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f5f5f2;--bg-card:#ffffff;--bg-hover:#eeede8;
+    --text:#1a1a18;--text-2:#5f5e5a;--text-3:#888780;
+    --border:rgba(0,0,0,.1);--border-md:rgba(0,0,0,.18);
+    --r:10px;--r-lg:14px;
+    --green:#1D9E75;--green-bg:#EAF3DE;--green-txt:#3B6D11;
+    --red:#E24B4A;--red-bg:#FCEBEB;--red-txt:#A32D2D;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#181816;--bg-card:#232321;--bg-hover:#2a2a28;
+      --text:#f0efea;--text-2:#b4b2a9;--text-3:#666460;
+      --border:rgba(255,255,255,.08);--border-md:rgba(255,255,255,.15);
+      --green:#5DCAA5;--green-bg:#0a4035;--green-txt:#9FE1CB;
+      --red:#F09595;--red-bg:#4a1212;--red-txt:#F7C1C1;
+    }
+  }
+  html,body{height:100%}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+
+  /* Install banner */
+  #installBanner{display:none;align-items:center;gap:10px;background:var(--green-bg);border-bottom:1px solid var(--green);padding:.75rem 1.25rem;position:sticky;top:0;z-index:100}
+  #installBanner.show{display:flex}
+  .install-text{flex:1;font-size:13px;color:var(--green-txt);font-weight:500}
+  .install-text small{font-weight:400;opacity:.8}
+  #installBtn{padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:var(--r);font-size:13px;cursor:pointer;font-family:inherit}
+  #dismissInstall{background:none;border:none;color:var(--green-txt);cursor:pointer;font-size:18px;padding:2px}
+
+  /* Offline badge */
+  #offlineBadge{display:none;position:fixed;top:12px;right:12px;background:#555;color:#fff;font-size:11px;padding:4px 10px;border-radius:20px;z-index:200;align-items:center;gap:5px}
+  #offlineBadge.show{display:flex}
+
+  .page{max-width:680px;margin:0 auto;padding:1.5rem 1rem 3rem}
+  .app-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem}
+  .app-title{font-size:22px;font-weight:600;letter-spacing:-.3px}
+  .app-sub{font-size:13px;color:var(--text-2);margin-top:2px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+  .tool-btn{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--r);border:0.5px solid var(--border-md);background:var(--bg-card);cursor:pointer;font-size:12px;color:var(--text);font-family:inherit;transition:background .15s}
+  .tool-btn:hover{background:var(--bg-hover)}
+  .tool-btn.green{background:var(--green-bg);color:var(--green-txt);border-color:rgba(29,158,117,.3)}
+
+  .date-nav{display:flex;align-items:center;gap:8px;background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:.75rem 1rem;margin-bottom:1.25rem}
+  .date-display{flex:1;text-align:center;font-size:15px;font-weight:500}
+  .nav-btn,.today-btn{background:none;border:0.5px solid var(--border-md);border-radius:var(--r);padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text);font-family:inherit}
+  .nav-btn:hover,.today-btn:hover{background:var(--bg-hover)}
+
+  .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+  .metric{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:1rem;text-align:center}
+  .metric-label{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .metric-value{font-size:20px;font-weight:600}
+  .pos{color:var(--green)}
+  .neg{color:var(--red)}
+
+  .add-section{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:1.25rem;margin-bottom:1.25rem}
+  .add-title{font-size:12px;font-weight:500;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+  .form-grid{display:grid;grid-template-columns:auto 120px 1fr auto;gap:8px;align-items:center}
+  @media(max-width:540px){
+    .form-grid{grid-template-columns:1fr 1fr}
+    .form-grid input[type=text]{grid-column:1/-1}
+    .form-grid .add-btn{grid-column:1/-1}
+  }
+  .type-toggle{display:flex;border:0.5px solid var(--border-md);border-radius:var(--r);overflow:hidden}
+  .type-btn{flex:1;padding:8px 12px;font-size:13px;border:none;background:transparent;cursor:pointer;color:var(--text-2);font-family:inherit;transition:all .15s;white-space:nowrap}
+  .type-btn.earn{background:var(--green-bg);color:var(--green-txt);font-weight:500}
+  .type-btn.expense{background:var(--red-bg);color:var(--red-txt);font-weight:500}
+  input[type=number],input[type=text]{background:var(--bg-hover);border:0.5px solid var(--border-md);border-radius:var(--r);padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;width:100%;outline:none;transition:border .15s}
+  input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(29,158,117,.12)}
+  .add-btn{padding:8px 16px;border-radius:var(--r);border:0.5px solid var(--border-md);background:var(--bg-hover);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);font-family:inherit;white-space:nowrap;transition:background .15s}
+  .add-btn:hover{background:var(--bg-card)}
+  .add-btn:active{transform:scale(.97)}
+
+  .section-label{font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+  .entry-list{display:flex;flex-direction:column;gap:6px;margin-bottom:1.5rem;min-height:20px}
+  .entry-item{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--r);padding:.7rem 1rem;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .dot-earn{background:var(--green)}
+  .dot-expense{background:var(--red)}
+  .entry-desc{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .entry-amount{font-size:14px;font-weight:600;min-width:72px;text-align:right}
+  .earn-amt{color:var(--green)}
+  .expense-amt{color:var(--red)}
+  .del-btn{background:none;border:none;cursor:pointer;color:var(--text-3);padding:4px;border-radius:6px;line-height:1;font-size:16px}
+  .del-btn:hover{color:var(--red);background:var(--red-bg)}
+  .empty-state{text-align:center;padding:2rem;color:var(--text-2);font-size:14px;background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--r)}
+
+  .chart-wrap{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:1.25rem;margin-bottom:1.25rem}
+  .chart-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+  .chart-legend{display:flex;gap:14px;font-size:12px;color:var(--text-2)}
+  .legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:middle}
+  .chart-canvas-wrap{position:relative;height:200px;margin-top:12px}
+
+  /* Toast */
+  .toast{position:fixed;bottom:calc(1.5rem + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#1a1a18;color:#f0efea;padding:.6rem 1.2rem;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+  .toast.show{opacity:1}
+
+  @media print{
+    #installBanner,#offlineBadge,.toolbar,.add-section,.del-btn,.nav-btn,.today-btn{display:none!important}
+    .chart-wrap{break-inside:avoid}
+    body{background:#fff}
+    .metric,.entry-item,.chart-wrap,.date-nav{border:1px solid #ccc}
+  }
+</style>
+</head>
+<body>
+
+<div id="installBanner">
+  <i class="ti ti-device-mobile" style="font-size:18px;color:var(--green-txt)"></i>
+  <div class="install-text">
+    Install Daily Tracker<br><small>Works offline, lives on your home screen</small>
+  </div>
+  <button id="installBtn" onclick="installApp()">Install</button>
+  <button id="dismissInstall" onclick="dismissInstall()">✕</button>
+</div>
+
+<div id="offlineBadge"><i class="ti ti-wifi-off" style="font-size:12px"></i> Offline</div>
+
+<div class="page">
+  <div class="app-header">
+    <div>
+      <div class="app-title">Daily Tracker</div>
+      <div class="app-sub">Earnings &amp; expenses</div>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn green" onclick="exportCSV()"><i class="ti ti-download"></i> CSV</button>
+      <button class="tool-btn" onclick="exportJSON()"><i class="ti ti-file-export"></i> Backup</button>
+      <label class="tool-btn" style="cursor:pointer"><i class="ti ti-file-import"></i> Import<input type="file" accept=".json" onchange="importJSON(event)" style="display:none"></label>
+      <button class="tool-btn" onclick="window.print()"><i class="ti ti-printer"></i></button>
+    </div>
+  </div>
+
+  <div class="date-nav">
+    <button class="nav-btn" onclick="shiftDay(-1)"><i class="ti ti-chevron-left"></i></button>
+    <div class="date-display" id="dateDisplay"></div>
+    <button class="today-btn" onclick="goToday()">Today</button>
+    <button class="nav-btn" onclick="shiftDay(1)"><i class="ti ti-chevron-right"></i></button>
+  </div>
+
+  <div class="summary-grid">
+    <div class="metric">
+      <div class="metric-label">Earned</div>
+      <div class="metric-value pos" id="totalEarned">$0.00</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Spent</div>
+      <div class="metric-value neg" id="totalSpent">$0.00</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Balance</div>
+      <div class="metric-value" id="balance">$0.00</div>
+    </div>
+  </div>
+
+  <div class="add-section">
+    <div class="add-title">Add Entry</div>
+    <div class="form-grid">
+      <div class="type-toggle">
+        <button class="type-btn earn" id="earnBtn" onclick="setType('earn')">Earned</button>
+        <button class="type-btn" id="expBtn" onclick="setType('expense')">Spent</button>
+      </div>
+      <input type="number" id="amountInput" placeholder="0.00" min="0" step="0.01">
+      <input type="text" id="descInput" placeholder="Description (e.g. Salary, Coffee...)">
+      <button class="add-btn" onclick="addEntry()"><i class="ti ti-plus"></i> Add</button>
+    </div>
+  </div>
+
+  <div class="section-label"><i class="ti ti-list"></i> Entries</div>
+  <div class="entry-list" id="entryList"></div>
+
+  <div class="chart-wrap">
+    <div class="chart-meta">
+      <div class="section-label" style="margin:0"><i class="ti ti-chart-bar"></i> 7-day overview</div>
+      <div class="chart-legend">
+        <span><span class="legend-dot" style="background:#1D9E75"></span>Earned</span>
+        <span><span class="legend-dot" style="background:#E24B4A"></span>Spent</span>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="weekChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let currentType = 'earn';
+let currentDate = new Date(); currentDate.setHours(0,0,0,0);
+let allData = JSON.parse(localStorage.getItem('trackerData') || '{}');
+let weekChart = null;
+let deferredInstall = null;
+
+// ── PWA: Service Worker ────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js')
+    .then(reg => console.log('SW registered:', reg.scope))
+    .catch(err => console.log('SW error:', err));
+}
+
+// ── PWA: Install prompt ────────────────────────────────
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('show');
+  toast('App installed! 🎉');
+});
+function installApp() {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  deferredInstall.userChoice.then(() => { deferredInstall = null; document.getElementById('installBanner').classList.remove('show'); });
+}
+function dismissInstall() { document.getElementById('installBanner').classList.remove('show'); }
+
+// ── PWA: Online / offline ──────────────────────────────
+function updateOnlineStatus() {
+  document.getElementById('offlineBadge').classList.toggle('show', !navigator.onLine);
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// ── Helpers ────────────────────────────────────────────
+const save = () => localStorage.setItem('trackerData', JSON.stringify(allData));
+const dateKey = d => d.toISOString().slice(0,10);
+const fmt = n => '$' + Math.abs(n).toFixed(2);
+
+function formatDate(d) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = (d - today) / 86400000;
+  const opts = {weekday:'long', month:'long', day:'numeric'};
+  if (diff === 0) return 'Today — ' + d.toLocaleDateString('en-US', opts);
+  if (diff === -1) return 'Yesterday — ' + d.toLocaleDateString('en-US', opts);
+  return d.toLocaleDateString('en-US', {...opts, year:'numeric'});
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function download(filename, type, content) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename; a.click();
+}
+
+// ── Controls ───────────────────────────────────────────
+function setType(t) {
+  currentType = t;
+  document.getElementById('earnBtn').className = 'type-btn' + (t === 'earn' ? ' earn' : '');
+  document.getElementById('expBtn').className = 'type-btn' + (t === 'expense' ? ' expense' : '');
+}
+
+function shiftDay(n) { currentDate.setDate(currentDate.getDate() + n); render(); }
+function goToday() { currentDate = new Date(); currentDate.setHours(0,0,0,0); render(); }
+
+function addEntry() {
+  const amt = parseFloat(document.getElementById('amountInput').value);
+  const desc = document.getElementById('descInput').value.trim();
+  if (!amt || amt <= 0 || !desc) { toast('Enter a valid amount and description.'); return; }
+  const k = dateKey(currentDate);
+  if (!allData[k]) allData[k] = [];
+  allData[k].push({ type: currentType, amount: amt, desc, id: Date.now() });
+  document.getElementById('amountInput').value = '';
+  document.getElementById('descInput').value = '';
+  save(); render();
+}
+
+function deleteEntry(k, id) {
+  allData[k] = (allData[k] || []).filter(e => e.id !== id);
+  save(); render();
+}
+
+// ── Export / Import ────────────────────────────────────
+function exportCSV() {
+  const rows = [['Date','Type','Description','Amount']];
+  Object.keys(allData).sort().forEach(k =>
+    (allData[k]||[]).forEach(e =>
+      rows.push([k, e.type, `"${e.desc.replace(/"/g,'""')}"`, e.amount.toFixed(2)])
+    )
+  );
+  if (rows.length === 1) { toast('No data to export yet.'); return; }
+  download('tracker_export.csv', 'text/csv', rows.map(r => r.join(',')).join('\n'));
+  toast('CSV downloaded!');
+}
+
+function exportJSON() {
+  if (!Object.keys(allData).length) { toast('No data to export yet.'); return; }
+  download('tracker_backup.json', 'application/json', JSON.stringify(allData, null, 2));
+  toast('Backup downloaded!');
+}
+
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      allData = { ...allData, ...JSON.parse(ev.target.result) };
+      save(); render(); toast('Import successful!');
+    } catch { toast('Invalid file. Use a valid JSON backup.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── Render ─────────────────────────────────────────────
+function render() {
+  document.getElementById('dateDisplay').textContent = formatDate(currentDate);
+  const k = dateKey(currentDate);
+  const entries = allData[k] || [];
+  const earned = entries.filter(e=>e.type==='earn').reduce((s,e)=>s+e.amount,0);
+  const spent = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const bal = earned - spent;
+
+  document.getElementById('totalEarned').textContent = fmt(earned);
+  document.getElementById('totalSpent').textContent = fmt(spent);
+  const balEl = document.getElementById('balance');
+  balEl.textContent = (bal < 0 ? '-' : '') + fmt(bal);
+  balEl.className = 'metric-value' + (bal > 0 ? ' pos' : bal < 0 ? ' neg' : '');
+
+  const list = document.getElementById('entryList');
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty-state">No entries yet — add your first one above!</div>';
+  } else {
+    list.innerHTML = [...entries].reverse().map(e => `
+      <div class="entry-item">
+        <div class="dot ${e.type==='earn'?'dot-earn':'dot-expense'}"></div>
+        <div class="entry-desc">${e.desc}</div>
+        <div class="entry-amount ${e.type==='earn'?'earn-amt':'expense-amt'}">${e.type==='earn'?'+':'-'}${fmt(e.amount)}</div>
+        <button class="del-btn" onclick="deleteEntry('${k}',${e.id})" aria-label="Delete"><i class="ti ti-trash"></i></button>
+      </div>`).join('');
+  }
+  renderChart();
+}
+
+function renderChart() {
+  const labels = [], earns = [], spents = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(currentDate); d.setDate(d.getDate() - i);
+    const es = allData[dateKey(d)] || [];
+    labels.push(d.toLocaleDateString('en-US',{weekday:'short',month:'numeric',day:'numeric'}));
+    earns.push(+es.filter(e=>e.type==='earn').reduce((s,e)=>s+e.amount,0).toFixed(2));
+    spents.push(+es.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0).toFixed(2));
+  }
+  const ctx = document.getElementById('weekChart').getContext('2d');
+  if (weekChart) weekChart.destroy();
+  weekChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Earned', data:earns, backgroundColor:'#1D9E75', borderRadius:5, borderSkipped:false },
+        { label:'Spent',  data:spents, backgroundColor:'#E24B4A', borderRadius:5, borderSkipped:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>' '+c.dataset.label+': $'+c.parsed.y.toFixed(2)}} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{size:10},color:'#888'} },
+        y:{ beginAtZero:true, grid:{color:'rgba(128,128,128,.1)'}, ticks:{callback:v=>'$'+v,font:{size:10},color:'#888'} }
+      }
+    }
+  });
+}
+
+// ── Keyboard shortcuts ────────────────────────────────
+document.getElementById('amountInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('descInput').focus(); });
+document.getElementById('descInput').addEventListener('keydown', e => { if(e.key==='Enter') addEntry(); });
+
+render();
+</script>
+</body>
+</html>
