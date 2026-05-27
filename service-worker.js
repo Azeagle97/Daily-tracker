@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daily-tracker-v1';
+const CACHE_NAME = 'daily-money-tracker-v1';
 const ASSETS = [
   './index.html',
   './manifest.json',
